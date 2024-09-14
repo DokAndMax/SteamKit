@@ -161,7 +161,10 @@ namespace SteamKit2.Internal
         /// The <see cref="IPEndPoint"/> of the CM server to connect to.
         /// If <c>null</c>, SteamKit will randomly select a CM server from its internal list.
         /// </param>
-        public void Connect( ServerRecord? cmServer = null )
+        /// <param name="proxy">
+        /// The proxy server that should be used to connect to CM server (only WebSocketConnection is supported).
+        /// </param>
+        public void Connect( ServerRecord? cmServer = null, IWebProxy? proxy = null )
         {
             lock ( connectionLock )
             {
@@ -218,7 +221,15 @@ namespace SteamKit2.Internal
                     newConnection.NetMsgReceived += NetMsgReceived;
                     newConnection.Connected += Connected;
                     newConnection.Disconnected += Disconnected;
-                    newConnection.Connect( record.EndPoint, ( int )ConnectionTimeout.TotalMilliseconds );
+                    IWebProxy? webProxy = proxy ?? Configuration.WebProxy;
+                    if ( ( webProxy != null ) && newConnection is WebSocketConnection socketConnection )
+                    {
+                        socketConnection.Connect( record.EndPoint, webProxy, ( int )ConnectionTimeout.TotalMilliseconds );
+                    }
+                    else
+                    {
+                        newConnection.Connect( record.EndPoint, ( int )ConnectionTimeout.TotalMilliseconds );
+                    }
                 }, TaskContinuationOptions.ExecuteSynchronously ).ContinueWith( t =>
                 {
                     if ( t.IsFaulted )
